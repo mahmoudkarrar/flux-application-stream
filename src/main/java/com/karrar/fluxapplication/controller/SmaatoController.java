@@ -1,5 +1,6 @@
 package com.karrar.fluxapplication.controller;
 
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -12,6 +13,7 @@ import static java.util.Optional.ofNullable;
 
 @RestController
 @RequestMapping(path="/api/smaato")
+@Slf4j
 public class SmaatoController {
     @GetMapping(path = "/accept")
     public Mono<String> sayHallo(@RequestParam String id, @RequestParam(required = false) String endpoint) {
@@ -20,7 +22,7 @@ public class SmaatoController {
                 .map(uri-> WebClient.builder()
                         .baseUrl(uri)
                         .filter(ExchangeFilterFunction.ofResponseProcessor(res ->{
-                                    System.out.println("Response status "+ res.statusCode());
+                                    log.info("Response status {}", res.statusCode());
                                     return Mono.just(res);
                                 }
                         ))
