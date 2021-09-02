@@ -1,34 +1,42 @@
 package com.karrar.fluxapplication.controller;
 
+import com.karrar.fluxapplication.model.RequestCountRTO;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.reactive.function.BodyInserters;
 import org.springframework.web.reactive.function.client.ExchangeFilterFunction;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Mono;
 import reactor.core.publisher.Sinks;
 
 import java.time.Duration;
+import java.util.concurrent.atomic.AtomicLong;
 
 import static java.util.Optional.ofNullable;
 
 @RestController
-@RequestMapping(path="/api/smaato")
+@RequestMapping(path = "/api/smaato")
 @Slf4j
 public class SmaatoController {
 
     private Sinks.Many sink;
+    private final AtomicLong requestsCounter;
 
     public SmaatoController() {
         this.sink = Sinks.many().multicast().onBackpressureBuffer(Integer.MAX_VALUE);
+        requestsCounter = new AtomicLong(0);
+
         Mono.just(1).repeat()
                 .delayElements(Duration.ofMinutes(1))
-                .flatMap(ignore -> countDistinctIds())
-                .subscribe(count-> {
+                .concatMap(ignore -> countDistinctIds())
+                .subscribe(count -> {
                     log.info("[{}] distinct ids were processed in the last minute", count);
                     sink = Sinks.many().multicast().onBackpressureBuffer(Integer.MAX_VALUE);
+                    requestsCounter.set(0);
                 });
 
     }
@@ -39,16 +47,25 @@ public class SmaatoController {
 
         sink.emitNext(id, (signalType, emitResult) -> emitResult == Sinks.EmitResult.FAIL_NON_SERIALIZED);
 
+        requestsCounter.incrementAndGet();
+
         return ofNullable(endpoint)
-                .map(uri-> WebClient.builder()
+                .map(uri -> WebClient.builder()
                         .baseUrl(uri)
-                        .filter(ExchangeFilterFunction.ofResponseProcessor(res ->{
+                        .filter(ExchangeFilterFunction.ofResponseProcessor(res -> {
                                     log.info("Response status {}", res.statusCode());
                                     return Mono.just(res);
                                 }
                         ))
                         .build()
-                        .get()
+                        .post()
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .accept(MediaType.APPLICATION_JSON)
+                        .body(
+                                BodyInserters.fromValue(
+                                        new RequestCountRTO(requestsCounter.get())
+                                )
+                        )
                         .retrieve()
                         .bodyToMono(String.class)
                         .onErrorResume(throwable -> Mono.just("fail"))
