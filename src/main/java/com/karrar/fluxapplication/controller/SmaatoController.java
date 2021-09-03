@@ -1,7 +1,9 @@
 package com.karrar.fluxapplication.controller;
 
 import com.karrar.fluxapplication.model.RequestCountRTO;
+import com.karrar.fluxapplication.service.KinesisService;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -25,14 +27,19 @@ public class SmaatoController {
 
     private Sinks.Many sink;
     private final AtomicLong requestsCounter;
+    private final KinesisService kinesisService;
 
-    public SmaatoController() {
+    @Autowired
+    public SmaatoController(KinesisService kinesisService) {
+        this.kinesisService = kinesisService;
         this.sink = Sinks.many().multicast().onBackpressureBuffer(Integer.MAX_VALUE);
         requestsCounter = new AtomicLong(0);
 
         Mono.just(1).repeat()
                 .delayElements(Duration.ofMinutes(1))
                 .concatMap(ignore -> countDistinctIds())
+                .doOnNext(kinesisService::streamData)
+                .doOnError(e-> log.error(e.getMessage()))
                 .subscribe(count -> {
                     log.info("[{}] distinct ids were processed in the last minute", count);
                     sink = Sinks.many().multicast().onBackpressureBuffer(Integer.MAX_VALUE);
