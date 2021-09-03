@@ -2,6 +2,7 @@ package com.karrar.fluxapplication.controller;
 
 import com.karrar.fluxapplication.model.RequestCountRTO;
 import com.karrar.fluxapplication.service.KinesisService;
+import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
@@ -23,6 +24,7 @@ import static java.util.Optional.ofNullable;
 @RestController
 @RequestMapping(path = "/api/smaato")
 @Slf4j
+@Getter
 public class SmaatoController {
 
     private Sinks.Many sink;
