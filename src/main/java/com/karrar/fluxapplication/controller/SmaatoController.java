@@ -34,9 +34,17 @@ public class SmaatoController {
     @Autowired
     public SmaatoController(KinesisService kinesisService) {
         this.kinesisService = kinesisService;
-        this.sink = Sinks.many().multicast().onBackpressureBuffer(Integer.MAX_VALUE);
+        initializeIdPublisher();
         requestsCounter = new AtomicLong(0);
 
+        scheduleRequestCounter();
+    }
+
+    private void initializeIdPublisher() {
+        this.sink = Sinks.many().multicast().onBackpressureBuffer(Integer.MAX_VALUE);
+    }
+
+    private void scheduleRequestCounter() {
         Mono.just(1).repeat()
                 .delayElements(Duration.ofMinutes(1))
                 .concatMap(ignore -> countDistinctIds())
@@ -44,10 +52,9 @@ public class SmaatoController {
                 .doOnError(e-> log.error(e.getMessage()))
                 .subscribe(count -> {
                     log.info("[{}] distinct ids were processed in the last minute", count);
-                    sink = Sinks.many().multicast().onBackpressureBuffer(Integer.MAX_VALUE);
+                    initializeIdPublisher();
                     requestsCounter.set(0);
                 });
-
     }
 
 

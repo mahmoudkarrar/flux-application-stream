@@ -1,5 +1,6 @@
 package com.karrar.fluxapplication.controllers;
 
+import com.karrar.fluxapplication.AmazonKinesisTestConfig;
 import com.karrar.fluxapplication.controller.SmaatoController;
 import com.karrar.fluxapplication.service.KinesisService;
 import com.squareup.okhttp.mockwebserver.MockResponse;
@@ -10,9 +11,12 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.restdocs.AutoConfigureRestDocs;
 import org.springframework.boot.test.autoconfigure.web.reactive.WebFluxTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.boot.test.mock.mockito.SpyBean;
+import org.springframework.context.annotation.Import;
+import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.junit.jupiter.SpringExtension;
 import org.springframework.test.web.reactive.server.WebTestClient;
 
@@ -22,14 +26,13 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 @ExtendWith(SpringExtension.class)
 @WebFluxTest(controllers = SmaatoController.class)
+@Import({KinesisService.class, AmazonKinesisTestConfig.class})
 @Slf4j
-public class SmaatoControllerIT {
+@ActiveProfiles("test")
+public class SmaatoControllerIntegrationTest {
 
     @Autowired
     private WebTestClient webClient;
-
-    @MockBean
-    private KinesisService kinesisService;
 
     @SpyBean
     SmaatoController smaatoController;
